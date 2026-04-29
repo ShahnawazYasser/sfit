@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sfit-v3';
+const CACHE_NAME = 'sfit-v4';
 
 // Relative paths — resolve correctly whether hosted at / or /sfit/
 const STATIC_ASSETS = [
@@ -13,7 +13,7 @@ const STATIC_ASSETS = [
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(STATIC_ASSETS))
+      .then(cache => cache.addAll(STATIC_ASSETS).catch(() => {}))
       .then(() => self.skipWaiting())
   );
 });

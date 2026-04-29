@@ -1011,7 +1011,6 @@
 
 <div id="toast"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
 /* ─── Config (publishable anon key — safe to commit) ─── */
 const SUPABASE_URL = 'https://qwfdoualbtpaqljppfib.supabase.co';
@@ -1135,12 +1134,23 @@ const PHASE_NAMES = ['', 'Rebuild', 'Build', 'Push'];
 let currentWeek = parseInt(localStorage.getItem('currentWeek') || '1');
 let supabase = null;
 
-/* ─── Init Supabase ─── */
-try {
-  if (window.supabase && SUPABASE_URL && !SUPABASE_URL.includes('your-project')) {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  }
-} catch(e) {}
+/* ─── Supabase — loaded async so it never blocks the UI ─── */
+function loadSupabaseAsync() {
+  const script = document.createElement('script');
+  script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
+  script.onload = () => {
+    try {
+      if (window.supabase && SUPABASE_URL && !SUPABASE_URL.includes('your-project')) {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // Refresh views that benefit from live Supabase data
+        renderWeekGrid();
+        loadMaxesHistory();
+      }
+    } catch(e) {}
+  };
+  script.onerror = () => {}; // fail silently, app works on localStorage
+  document.head.appendChild(script);
+}
 
 /* ─── Utilities ─── */
 function getPhase(w) {
@@ -1590,6 +1600,9 @@ function init() {
     const el = document.getElementById(id);
     if (i+1 === phase) el.style.boxShadow = 'inset 0 0 0 1px rgba(0,0,0,0.1)';
   });
+
+  // Load Supabase in background — page is already interactive by now
+  loadSupabaseAsync();
 
   // Register service worker
   if ('serviceWorker' in navigator) {
