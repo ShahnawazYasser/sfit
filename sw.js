@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sfit-v2';
+const CACHE_NAME = 'sfit-v3';
 
 // Relative paths — resolve correctly whether hosted at / or /sfit/
 const STATIC_ASSETS = [

@@ -1011,9 +1011,12 @@
 
 <div id="toast"></div>
 
-<script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
+/* ─── Config (publishable anon key — safe to commit) ─── */
+const SUPABASE_URL = 'https://qwfdoualbtpaqljppfib.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_TY0nu3-3W62TMj3Be86v0w_kw_ZK8PU';
+
 /* ─── Data ─── */
 const SCHEDULE = [
   { day: 'Monday',    type: 'lift',     sessions: [{ label: 'Lift',     color: 'blue',  text: 'Lower — Squat focus',             sub: 'Gymkhana · daytime' }] },
@@ -1134,7 +1137,7 @@ let supabase = null;
 
 /* ─── Init Supabase ─── */
 try {
-  if (typeof SUPABASE_URL !== 'undefined' && SUPABASE_URL !== 'https://your-project.supabase.co') {
+  if (window.supabase && SUPABASE_URL && !SUPABASE_URL.includes('your-project')) {
     supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   }
 } catch(e) {}
@@ -1594,7 +1597,12 @@ function init() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', init);
+// Scripts are at end of <body> — DOM is already parsed when this runs
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
 </script>
 </body>
 </html>
