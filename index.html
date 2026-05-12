@@ -1147,7 +1147,7 @@ const PHASE_NAMES = ['', 'Rebuild', 'Build', 'Push'];
 
 /* ─── State ─── */
 let currentWeek = parseInt(localStorage.getItem('currentWeek') || '1');
-let supabase = null;
+let db = null;
 
 /* ─── Connection status dot ─── */
 function updateConnectionStatus(connected) {
@@ -1181,14 +1181,14 @@ function loadSupabaseAsync() {
         return;
       }
       console.log('[SFit] Creating Supabase client for:', SUPABASE_URL);
-      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       console.log('[SFit] Supabase client created — testing connection…');
 
       // Verify the connection is actually working before declaring success
-      supabase.from('sessions').select('count', { count: 'exact', head: true }).then(({ error }) => {
+      db.from('sessions').select('count', { count: 'exact', head: true }).then(({ error }) => {
         if (error) {
           console.error('[SFit] Supabase connection test failed:', error.message, error);
-          supabase = null;
+          db = null;
           updateConnectionStatus(false);
         } else {
           console.log('[SFit] Supabase connected successfully');
@@ -1313,9 +1313,9 @@ async function renderWeekGrid() {
   // Load completed sessions from localStorage + Supabase
   const stored = JSON.parse(localStorage.getItem(`sessions_w${currentWeek}`) || '{}');
 
-  if (supabase) {
+  if (db) {
     try {
-      const { data, error } = await supabase.from('sessions').select('day_index,completed').eq('week', currentWeek);
+      const { data, error } = await db.from('sessions').select('day_index,completed').eq('week', currentWeek);
       if (error) console.error('[SFit] sessions select error:', error.message, error);
       else if (data) data.forEach(r => { if (r.completed) stored[r.day_index] = true; });
     } catch(e) {
@@ -1343,11 +1343,11 @@ async function toggleDay(idx) {
   localStorage.setItem(`sessions_w${currentWeek}`, JSON.stringify(stored));
   renderWeekGrid();
 
-  if (supabase) {
+  if (db) {
     try {
       const today = todayStr();
       // Check if a row already exists (no unique constraint → can't use upsert)
-      const { data: existing, error: selErr } = await supabase
+      const { data: existing, error: selErr } = await db
         .from('sessions')
         .select('id')
         .eq('week', currentWeek)
@@ -1357,14 +1357,14 @@ async function toggleDay(idx) {
       if (selErr) { console.error('[SFit] sessions select error:', selErr.message, selErr); return; }
 
       if (existing) {
-        const { error } = await supabase
+        const { error } = await db
           .from('sessions')
           .update({ completed: stored[idx], date: today })
           .eq('id', existing.id);
         if (error) console.error('[SFit] sessions update error:', error.message, error);
         else console.log('[SFit] sessions updated — day', idx, 'completed:', stored[idx]);
       } else {
-        const { error } = await supabase
+        const { error } = await db
           .from('sessions')
           .insert({ week: currentWeek, day_index: idx, date: today, completed: stored[idx] });
         if (error) console.error('[SFit] sessions insert error:', error.message, error);
@@ -1436,9 +1436,9 @@ async function saveJournal() {
   localStorage.setItem(`journal_${todayStr()}`, JSON.stringify(data));
 
   const status = document.getElementById('journal-status');
-  if (supabase) {
+  if (db) {
     try {
-      const { error } = await supabase.from('daily_notes').upsert(data, { onConflict: 'note_date' });
+      const { error } = await db.from('daily_notes').upsert(data, { onConflict: 'note_date' });
       if (error) {
         console.error('[SFit] daily_notes upsert error:', error.message, error);
         status.textContent = 'Saved locally (Supabase error — see console).';
@@ -1528,10 +1528,10 @@ async function savePrebreakMaxes() {
   });
   localStorage.setItem('prebreak_maxes', JSON.stringify(vals));
 
-  if (supabase) {
+  if (db) {
     try {
       const results = await Promise.all(Object.entries(vals).map(([lift, weight_kg]) =>
-        supabase.from('maxes').insert({ lift, weight_kg, is_pre_break: true })
+        db.from('maxes').insert({ lift, weight_kg, is_pre_break: true })
       ));
       const errs = results.filter(r => r.error);
       if (errs.length) errs.forEach(r => console.error('[SFit] maxes insert error:', r.error.message, r.error));
@@ -1552,10 +1552,10 @@ async function saveCurrentMaxes() {
   });
   localStorage.setItem('current_maxes', JSON.stringify(vals));
 
-  if (supabase) {
+  if (db) {
     try {
       const results = await Promise.all(Object.entries(vals).map(([lift, weight_kg]) =>
-        supabase.from('maxes').insert({ lift, weight_kg, is_pre_break: false })
+        db.from('maxes').insert({ lift, weight_kg, is_pre_break: false })
       ));
       const errs = results.filter(r => r.error);
       if (errs.length) errs.forEach(r => console.error('[SFit] maxes insert error:', r.error.message, r.error));
@@ -1611,9 +1611,9 @@ async function logNewMax() {
   cur[lift] = weight_kg;
   localStorage.setItem('current_maxes', JSON.stringify(cur));
 
-  if (supabase) {
+  if (db) {
     try {
-      const { error } = await supabase.from('maxes').insert({ lift, weight_kg, is_pre_break: false });
+      const { error } = await db.from('maxes').insert({ lift, weight_kg, is_pre_break: false });
       if (error) console.error('[SFit] logNewMax insert error:', error.message, error);
       else console.log('[SFit] new max logged to Supabase:', lift, weight_kg);
     } catch(e) {
@@ -1634,9 +1634,9 @@ async function loadMaxesHistory() {
   const liftNames = { deadlift_sumo: 'Deadlift', squat_lowbar: 'Squat', bench: 'Bench' };
   let rows = [];
 
-  if (supabase) {
+  if (db) {
     try {
-      const { data, error } = await supabase.from('maxes')
+      const { data, error } = await db.from('maxes')
         .select('lift,weight_kg,logged_at,is_pre_break')
         .order('logged_at', { ascending: false })
         .limit(5);
