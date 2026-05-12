@@ -544,6 +544,20 @@
     .history-date { font-size: 12px; color: var(--text-tertiary); }
     .history-weight { font-weight: 500; color: var(--blue-500); }
 
+    /* ── Connection status dot ── */
+    #conn-dot {
+      position: fixed;
+      top: 12px;
+      right: 14px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--gray-200);
+      z-index: 300;
+      transition: background 0.4s;
+    }
+    #conn-dot.connected { background: #4caf50; }
+
     /* ── Toast ── */
     #toast {
       position: fixed;
@@ -1009,6 +1023,7 @@
   </nav>
 </div>
 
+<div id="conn-dot" title="Supabase: connecting…"></div>
 <div id="toast"></div>
 
 <script>
@@ -1134,21 +1149,63 @@ const PHASE_NAMES = ['', 'Rebuild', 'Build', 'Push'];
 let currentWeek = parseInt(localStorage.getItem('currentWeek') || '1');
 let supabase = null;
 
+/* ─── Connection status dot ─── */
+function updateConnectionStatus(connected) {
+  const dot = document.getElementById('conn-dot');
+  if (!dot) return;
+  if (connected) {
+    dot.classList.add('connected');
+    dot.title = 'Supabase: connected';
+  } else {
+    dot.classList.remove('connected');
+    dot.title = 'Supabase: offline — using localStorage';
+  }
+}
+
 /* ─── Supabase — loaded async so it never blocks the UI ─── */
 function loadSupabaseAsync() {
+  console.log('[SFit] Loading Supabase SDK…');
   const script = document.createElement('script');
   script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
   script.onload = () => {
+    console.log('[SFit] Supabase SDK script loaded');
     try {
-      if (window.supabase && SUPABASE_URL && !SUPABASE_URL.includes('your-project')) {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        // Refresh views that benefit from live Supabase data
-        renderWeekGrid();
-        loadMaxesHistory();
+      if (!window.supabase) {
+        console.warn('[SFit] window.supabase not found after SDK load');
+        updateConnectionStatus(false);
+        return;
       }
-    } catch(e) {}
+      if (!SUPABASE_URL || SUPABASE_URL.includes('your-project')) {
+        console.warn('[SFit] SUPABASE_URL not configured');
+        updateConnectionStatus(false);
+        return;
+      }
+      console.log('[SFit] Creating Supabase client for:', SUPABASE_URL);
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      console.log('[SFit] Supabase client created — testing connection…');
+
+      // Verify the connection is actually working before declaring success
+      supabase.from('sessions').select('count', { count: 'exact', head: true }).then(({ error }) => {
+        if (error) {
+          console.error('[SFit] Supabase connection test failed:', error.message, error);
+          supabase = null;
+          updateConnectionStatus(false);
+        } else {
+          console.log('[SFit] Supabase connected successfully');
+          updateConnectionStatus(true);
+          renderWeekGrid();
+          loadMaxesHistory();
+        }
+      });
+    } catch(e) {
+      console.error('[SFit] Supabase init error:', e);
+      updateConnectionStatus(false);
+    }
   };
-  script.onerror = () => {}; // fail silently, app works on localStorage
+  script.onerror = (e) => {
+    console.error('[SFit] Failed to load Supabase SDK (network error):', e);
+    updateConnectionStatus(false);
+  };
   document.head.appendChild(script);
 }
 
@@ -1258,9 +1315,12 @@ async function renderWeekGrid() {
 
   if (supabase) {
     try {
-      const { data } = await supabase.from('sessions').select('day_index,completed').eq('week', currentWeek);
-      if (data) data.forEach(r => { if (r.completed) stored[r.day_index] = true; });
-    } catch(e) {}
+      const { data, error } = await supabase.from('sessions').select('day_index,completed').eq('week', currentWeek);
+      if (error) console.error('[SFit] sessions select error:', error.message, error);
+      else if (data) data.forEach(r => { if (r.completed) stored[r.day_index] = true; });
+    } catch(e) {
+      console.error('[SFit] renderWeekGrid exception:', e);
+    }
   }
 
   grid.innerHTML = SCHEDULE.map((s, i) => {
@@ -1286,10 +1346,33 @@ async function toggleDay(idx) {
   if (supabase) {
     try {
       const today = todayStr();
-      await supabase.from('sessions').upsert({
-        week: currentWeek, day_index: idx, date: today, completed: stored[idx]
-      }, { onConflict: 'week,day_index' });
-    } catch(e) {}
+      // Check if a row already exists (no unique constraint → can't use upsert)
+      const { data: existing, error: selErr } = await supabase
+        .from('sessions')
+        .select('id')
+        .eq('week', currentWeek)
+        .eq('day_index', idx)
+        .maybeSingle();
+
+      if (selErr) { console.error('[SFit] sessions select error:', selErr.message, selErr); return; }
+
+      if (existing) {
+        const { error } = await supabase
+          .from('sessions')
+          .update({ completed: stored[idx], date: today })
+          .eq('id', existing.id);
+        if (error) console.error('[SFit] sessions update error:', error.message, error);
+        else console.log('[SFit] sessions updated — day', idx, 'completed:', stored[idx]);
+      } else {
+        const { error } = await supabase
+          .from('sessions')
+          .insert({ week: currentWeek, day_index: idx, date: today, completed: stored[idx] });
+        if (error) console.error('[SFit] sessions insert error:', error.message, error);
+        else console.log('[SFit] sessions inserted — day', idx, 'completed:', stored[idx]);
+      }
+    } catch(e) {
+      console.error('[SFit] toggleDay exception:', e);
+    }
   }
 }
 
@@ -1355,9 +1438,16 @@ async function saveJournal() {
   const status = document.getElementById('journal-status');
   if (supabase) {
     try {
-      await supabase.from('daily_notes').upsert(data, { onConflict: 'note_date' });
-      status.textContent = 'Saved.';
+      const { error } = await supabase.from('daily_notes').upsert(data, { onConflict: 'note_date' });
+      if (error) {
+        console.error('[SFit] daily_notes upsert error:', error.message, error);
+        status.textContent = 'Saved locally (Supabase error — see console).';
+      } else {
+        console.log('[SFit] daily_notes saved to Supabase');
+        status.textContent = 'Saved.';
+      }
     } catch(e) {
+      console.error('[SFit] saveJournal exception:', e);
       status.textContent = 'Saved locally (Supabase unavailable).';
     }
   } else {
@@ -1440,10 +1530,15 @@ async function savePrebreakMaxes() {
 
   if (supabase) {
     try {
-      await Promise.all(Object.entries(vals).map(([lift, weight_kg]) =>
+      const results = await Promise.all(Object.entries(vals).map(([lift, weight_kg]) =>
         supabase.from('maxes').insert({ lift, weight_kg, is_pre_break: true })
       ));
-    } catch(e) {}
+      const errs = results.filter(r => r.error);
+      if (errs.length) errs.forEach(r => console.error('[SFit] maxes insert error:', r.error.message, r.error));
+      else console.log('[SFit] pre-break maxes saved to Supabase');
+    } catch(e) {
+      console.error('[SFit] savePrebreakMaxes exception:', e);
+    }
   }
   updateRecoveryBars();
   toast('Pre-break maxes saved');
@@ -1459,10 +1554,15 @@ async function saveCurrentMaxes() {
 
   if (supabase) {
     try {
-      await Promise.all(Object.entries(vals).map(([lift, weight_kg]) =>
+      const results = await Promise.all(Object.entries(vals).map(([lift, weight_kg]) =>
         supabase.from('maxes').insert({ lift, weight_kg, is_pre_break: false })
       ));
-    } catch(e) {}
+      const errs = results.filter(r => r.error);
+      if (errs.length) errs.forEach(r => console.error('[SFit] maxes insert error:', r.error.message, r.error));
+      else console.log('[SFit] current maxes saved to Supabase');
+    } catch(e) {
+      console.error('[SFit] saveCurrentMaxes exception:', e);
+    }
   }
   updateRecoveryBars();
   toast('Current maxes saved');
@@ -1513,8 +1613,12 @@ async function logNewMax() {
 
   if (supabase) {
     try {
-      await supabase.from('maxes').insert({ lift, weight_kg, is_pre_break: false });
-    } catch(e) {}
+      const { error } = await supabase.from('maxes').insert({ lift, weight_kg, is_pre_break: false });
+      if (error) console.error('[SFit] logNewMax insert error:', error.message, error);
+      else console.log('[SFit] new max logged to Supabase:', lift, weight_kg);
+    } catch(e) {
+      console.error('[SFit] logNewMax exception:', e);
+    }
   }
 
   toggleLogForm();
@@ -1532,12 +1636,15 @@ async function loadMaxesHistory() {
 
   if (supabase) {
     try {
-      const { data } = await supabase.from('maxes')
+      const { data, error } = await supabase.from('maxes')
         .select('lift,weight_kg,logged_at,is_pre_break')
         .order('logged_at', { ascending: false })
         .limit(5);
-      if (data) rows = data;
-    } catch(e) {}
+      if (error) console.error('[SFit] maxes history error:', error.message, error);
+      else if (data) { rows = data; console.log('[SFit] maxes history loaded:', rows.length, 'rows'); }
+    } catch(e) {
+      console.error('[SFit] loadMaxesHistory exception:', e);
+    }
   }
 
   if (!rows.length) {
