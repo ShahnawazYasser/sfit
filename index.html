@@ -212,7 +212,7 @@
       display: flex;
       border-radius: 8px;
       overflow: hidden;
-      height: 28px;
+      height: 30px;
       margin: 12px 0 8px;
     }
     .phase-seg {
@@ -223,9 +223,11 @@
       font-size: 11px;
       font-weight: 600;
       letter-spacing: 0.04em;
+      transition: filter 0.3s;
     }
-    .phase-1 { background: #1B5E20; color: rgba(255,255,255,0.8); }
-    .phase-2 { background: #2E7D32; color: rgba(255,255,255,0.9); }
+    .phase-seg:not(.phase-active) { filter: brightness(0.6); }
+    .phase-1 { background: #1B5E20; color: rgba(255,255,255,0.9); }
+    .phase-2 { background: #2E7D32; color: rgba(255,255,255,0.95); }
     .phase-3 { background: var(--accent); color: #000; }
 
     /* ── Week nav ── */
@@ -245,9 +247,9 @@
       cursor: pointer;
       display: flex; align-items: center; justify-content: center;
       -webkit-tap-highlight-color: transparent;
-      transition: background 0.15s;
+      transition: background 0.15s, transform 0.1s;
     }
-    .week-nav-btn:active { background: #333; }
+    .week-nav-btn:active { background: #333; transform: scale(0.92); }
     .week-nav-label { font-size: 17px; font-weight: 600; color: var(--text-primary); }
     .phase-label { font-size: 12px; color: var(--text-tertiary); text-align: center; margin-top: 2px; }
 
@@ -255,49 +257,48 @@
     .week-grid {
       display: grid;
       grid-template-columns: repeat(7, 1fr);
-      gap: 5px;
+      gap: 4px;
       margin: 12px 0;
     }
     .week-cell {
-      min-height: 72px;
-      border-radius: 10px;
+      min-height: 80px;
+      border-radius: 12px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 3px;
-      font-size: 10px;
-      font-weight: 600;
+      gap: 4px;
       cursor: pointer;
       border: 1px solid var(--border);
       background: var(--bg-card);
       color: var(--text-secondary);
       -webkit-tap-highlight-color: transparent;
-      transition: opacity 0.2s;
+      transition: opacity 0.2s, transform 0.1s;
       position: relative;
-      padding: 8px 3px;
+      padding: 8px 2px;
       text-align: center;
     }
-    .week-cell.done { opacity: 0.3; }
+    .week-cell:active { transform: scale(0.94); }
+    .week-cell.done { opacity: 0.28; }
     .week-cell.today {
       border-color: var(--accent);
-      box-shadow: 0 0 0 1px rgba(0,230,118,0.15);
+      box-shadow: 0 0 0 1px rgba(0,230,118,0.2);
     }
     .week-cell .cell-day {
       font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.06em;
     }
     .week-cell .cell-check {
       position: absolute;
-      top: 4px; right: 5px;
-      font-size: 10px;
+      top: 5px; right: 6px;
+      font-size: 9px;
       color: var(--accent);
-      font-weight: 700;
+      font-weight: 800;
     }
-    .week-cell .cell-icon { font-size: 13px; line-height: 1; }
-    .week-cell .cell-label { font-size: 9px; color: var(--text-muted); }
+    .week-cell .cell-icon { font-size: 14px; line-height: 1; }
+    .week-cell .cell-label { font-size: 8px; color: var(--text-muted); letter-spacing: 0.03em; }
 
     .week-cell-blue   { border-color: rgba(79,195,247,0.25);  background: rgba(13,33,55,0.9); }
     .week-cell-green  { border-color: rgba(0,230,118,0.25);   background: rgba(10,42,10,0.9); }
@@ -316,18 +317,24 @@
     /* ── Today header in This Week tab ── */
     .today-header {
       display: flex;
-      align-items: baseline;
+      align-items: center;
       gap: 10px;
-      margin-bottom: 12px;
+      margin-bottom: 14px;
     }
     .today-day-name {
-      font-size: 20px;
+      font-size: 22px;
       font-weight: 600;
       color: var(--text-primary);
+      letter-spacing: -0.02em;
     }
     .today-session-badge {
       font-size: 12px;
-      color: var(--text-tertiary);
+      color: var(--accent);
+      background: var(--accent-muted);
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
     }
 
     /* ── Checklist ── */
@@ -335,11 +342,12 @@
       display: flex;
       align-items: flex-start;
       gap: 12px;
-      padding: 11px 0;
+      padding: 12px 0;
       border-bottom: 1px solid var(--border);
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
       min-height: 44px;
+      width: 100%;
     }
     .check-row:last-child { border-bottom: none; }
     .check-box {
@@ -349,11 +357,15 @@
       background: var(--bg-card);
       display: flex; align-items: center; justify-content: center;
       margin-top: 1px;
+      flex-shrink: 0;
       transition: background 0.15s, border-color 0.15s;
     }
     .check-box.checked { background: var(--accent); border-color: var(--accent); }
     .check-box.checked::after { content: '✓'; color: #000; font-size: 13px; font-weight: 700; line-height: 1; }
-    .check-text { font-size: 15px; color: var(--text-secondary); flex: 1; padding-top: 1px; }
+    .check-text {
+      font-size: 15px; color: var(--text-secondary); flex: 1;
+      padding-top: 1px; word-break: break-word; min-width: 0;
+    }
     .check-text.done-text { color: var(--text-muted); text-decoration: line-through; }
 
     /* ── Video rows ── */
@@ -381,7 +393,8 @@
     .video-info { flex: 1; }
     .video-title { font-size: 14px; font-weight: 500; color: var(--text-primary); }
     .video-sub   { font-size: 12px; color: var(--text-tertiary); }
-    .video-arrow { color: var(--accent); font-size: 16px; }
+    .video-arrow { color: var(--accent); display: flex; align-items: center; flex-shrink: 0; }
+    .video-arrow svg { width: 16px; height: 16px; }
 
     /* ── Progress bars ── */
     .prog-wrap { margin: 8px 0 4px; }
@@ -419,9 +432,9 @@
       padding: 12px 8px;
       text-align: center;
     }
-    .stat-label { font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 2px; }
-    .stat-value { font-size: 22px; font-weight: 700; color: var(--accent); line-height: 1.2; }
-    .stat-sub   { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+    .stat-label { font-size: 10px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
+    .stat-value { font-size: 28px; font-weight: 700; color: var(--accent); line-height: 1.1; }
+    .stat-sub   { font-size: 10px; color: var(--text-muted); margin-top: 3px; }
 
     /* ── Phase blocks ── */
     .phase-block {
@@ -442,7 +455,8 @@
     }
     .phase-block-body { font-size: 14px; color: var(--text-tertiary); line-height: 1.6; }
     .phase-block.collapsed .phase-block-body { display: none; }
-    .phase-block .toggle-arrow { font-size: 12px; color: var(--text-muted); }
+    .phase-block .toggle-arrow { color: var(--text-muted); }
+    .phase-block .toggle-arrow svg { width: 14px; height: 14px; }
 
     /* ── Recovery blocks ── */
     .rec-block {
@@ -475,19 +489,20 @@
     .rating-row {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
       margin: 10px 0;
-      flex-wrap: wrap;
     }
-    .rating-label { font-size: 13px; color: var(--text-tertiary); min-width: 72px; }
-    .rating-dots { display: flex; gap: 4px; flex-wrap: wrap; }
+    .rating-label { font-size: 12px; color: var(--text-tertiary); width: 62px; flex-shrink: 0; }
+    .rating-dots { display: flex; flex: 1; gap: 3px; }
     .rating-dot {
-      width: 30px; height: 30px;
-      border-radius: 50%;
+      flex: 1;
+      min-width: 0;
+      height: 28px;
+      border-radius: 6px;
       border: 1.5px solid var(--border);
       background: var(--bg-secondary);
       display: flex; align-items: center; justify-content: center;
-      font-size: 11px; font-weight: 600;
+      font-size: 10px; font-weight: 600;
       cursor: pointer;
       color: var(--text-muted);
       -webkit-tap-highlight-color: transparent;
@@ -658,7 +673,7 @@
     <div class="card">
       <button class="collapsible-btn" onclick="toggleCollapse('lift-plan')">
         <span class="card-title" style="margin:0">Lifting Plan</span>
-        <span id="lift-plan-arrow" style="color:var(--text-muted);font-size:14px">›</span>
+        <span id="lift-plan-arrow" style="color:var(--text-muted);display:flex;align-items:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></span>
       </button>
       <div id="lift-plan" style="display:none;margin-top:12px">
         <div class="phase-block" style="margin-bottom:12px">
@@ -686,7 +701,7 @@
     <div class="card">
       <button class="collapsible-btn" onclick="toggleCollapse('swim-plan')">
         <span class="card-title" style="margin:0">Swimming Plan</span>
-        <span id="swim-plan-arrow" style="color:var(--text-muted);font-size:14px">›</span>
+        <span id="swim-plan-arrow" style="color:var(--text-muted);display:flex;align-items:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></span>
       </button>
       <div id="swim-plan" style="display:none;margin-top:12px">
         <div class="phase-block" style="margin-bottom:8px">
@@ -720,6 +735,16 @@
     </div>
 
     <div class="week-grid" id="week-grid"></div>
+
+    <div style="margin: -4px 0 12px; padding: 0 2px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:5px;font-size:11px;color:var(--text-muted);">
+        <span>Program progress</span>
+        <span id="week-pct-label" style="color:var(--accent)"></span>
+      </div>
+      <div class="prog-track">
+        <div class="prog-fill" id="week-prog-fill" style="width:0%"></div>
+      </div>
+    </div>
 
     <div class="card">
       <div class="today-header">
@@ -755,7 +780,7 @@
     <div class="phase-block" id="run-phase-1">
       <div class="phase-block-head" onclick="togglePhaseBlock('run-phase-1')">
         <span>Phase 1 — Wk 1–4: C25K Restart</span>
-        <span class="toggle-arrow">›</span>
+        <span class="toggle-arrow" style="display:flex;align-items:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></span>
       </div>
       <div class="phase-block-body">You're restarting C25K from Week 1. 2 runs/week: Wed treadmill (easy, zone 2), Sat outdoor (3am, main C25K session). Focus on form — mid-foot strike, short stride, soft knees, easy breathing. Log every run on Runna + Strava. Note knee/shin soreness 1–10 after each run.</div>
     </div>
@@ -763,7 +788,7 @@
     <div class="phase-block phase-2" id="run-phase-2">
       <div class="phase-block-head" onclick="togglePhaseBlock('run-phase-2')">
         <span>Phase 2 — Wk 5–8: 5K Base</span>
-        <span class="toggle-arrow">›</span>
+        <span class="toggle-arrow" style="display:flex;align-items:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></span>
       </div>
       <div class="phase-block-body">Complete C25K. Treadmill run stays easy. Sat run gets longer (25–30 min). Add strides: 6×20 sec fast bursts after easy runs. Apple Watch pace will visibly improve week to week.</div>
     </div>
@@ -771,7 +796,7 @@
     <div class="phase-block phase-3" id="run-phase-3">
       <div class="phase-block-head" onclick="togglePhaseBlock('run-phase-3')">
         <span>Phase 3 — Wk 9–12: 5K → 10K</span>
-        <span class="toggle-arrow">›</span>
+        <span class="toggle-arrow" style="display:flex;align-items:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></span>
       </div>
       <div class="phase-block-body">Sat becomes your long run (35–50 min, very easy). Wed stays moderate. By week 12: comfortable 5K anytime, one 7–8K long run done. 10K is a month beyond that.</div>
     </div>
@@ -1128,6 +1153,17 @@ function renderWeekLabel() {
     const el = document.getElementById(id);
     if (el) el.textContent = phaseLabel;
   });
+  // Highlight active phase segment
+  document.querySelectorAll('.phase-seg').forEach((seg, i) => {
+    if (i + 1 === phase) seg.classList.add('phase-active');
+    else seg.classList.remove('phase-active');
+  });
+  // Update program progress bar
+  const pct = Math.round((currentWeek / 12) * 100);
+  const fill = document.getElementById('week-prog-fill');
+  const lbl  = document.getElementById('week-pct-label');
+  if (fill) fill.style.width = pct + '%';
+  if (lbl)  lbl.textContent  = `Wk ${currentWeek} · ${pct}%`;
 }
 
 function renderSchedulePhase() {
@@ -1309,7 +1345,7 @@ function renderVideoList(containerId, videos) {
         <div class="video-title">${v.title}</div>
         <div class="video-sub">${v.sub}</div>
       </div>
-      <div class="video-arrow">→</div>
+      <div class="video-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div>
     </a>`).join('');
 }
 
@@ -1455,19 +1491,22 @@ async function loadMaxesHistory() {
 }
 
 /* ─── Collapsible helpers ─── */
+const SVG_CHEVRON_RIGHT = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>';
+const SVG_CHEVRON_DOWN  = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>';
+
 function toggleCollapse(id) {
   const el = document.getElementById(id);
   const arrow = document.getElementById(id + '-arrow');
   const hidden = el.style.display === 'none';
   el.style.display = hidden ? 'block' : 'none';
-  arrow.textContent = hidden ? '∨' : '›';
+  if (arrow) arrow.innerHTML = hidden ? SVG_CHEVRON_DOWN : SVG_CHEVRON_RIGHT;
 }
 
 function togglePhaseBlock(id) {
   const el = document.getElementById(id);
   el.classList.toggle('collapsed');
   const arrow = el.querySelector('.toggle-arrow');
-  if (arrow) arrow.textContent = el.classList.contains('collapsed') ? '›' : '∨';
+  if (arrow) arrow.innerHTML = el.classList.contains('collapsed') ? SVG_CHEVRON_RIGHT : SVG_CHEVRON_DOWN;
 }
 
 /* ─── Init ─── */
